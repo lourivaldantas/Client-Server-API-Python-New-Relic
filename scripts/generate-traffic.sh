@@ -8,6 +8,7 @@ REQUEST_INTERVAL="${REQUEST_INTERVAL:-0.1}"
 REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-15}"
 ERROR_RATE="${ERROR_RATE:-3}"
 ROOT_RATE="${ROOT_RATE:-10}"
+DB_READ_RATE="${DB_READ_RATE:-25}"
 
 request_count=0
 active_pids=()
@@ -41,9 +42,10 @@ fi
 
 validate_percentage "ERROR_RATE" "$ERROR_RATE"
 validate_percentage "ROOT_RATE" "$ROOT_RATE"
+validate_percentage "DB_READ_RATE" "$DB_READ_RATE"
 
-if ((ERROR_RATE + ROOT_RATE > 100)); then
-    printf 'A soma de ERROR_RATE e ROOT_RATE não pode ultrapassar 100.\n' >&2
+if ((ERROR_RATE + ROOT_RATE + DB_READ_RATE > 100)); then
+    printf 'A soma de ERROR_RATE, ROOT_RATE e DB_READ_RATE não pode ultrapassar 100.\n' >&2
     exit 1
 fi
 
@@ -95,14 +97,16 @@ send_request() {
 }
 
 printf 'Enviando tráfego continuamente para %s\n' "$BASE_URL"
+printf 'Consultas ao banco serão iniciadas pelo Client em %s\n' "$BASE_URL"
 printf 'Concorrência: %s | Intervalo por lote: %ss | Timeout: %ss\n' \
     "$CONCURRENCY" \
     "$REQUEST_INTERVAL" \
     "$REQUEST_TIMEOUT"
-printf 'Distribuição: %s%% erros | %s%% health checks | %s%% fluxo completo\n' \
+printf 'Distribuição: %s%% erros | %s%% health checks | %s%% banco | %s%% fluxo completo\n' \
     "$ERROR_RATE" \
     "$ROOT_RATE" \
-    "$((100 - ERROR_RATE - ROOT_RATE))"
+    "$DB_READ_RATE" \
+    "$((100 - ERROR_RATE - ROOT_RATE - DB_READ_RATE))"
 printf 'Encerre com Ctrl+C\n\n'
 
 while :; do
@@ -126,6 +130,10 @@ while :; do
             method="GET"
             url="${BASE_URL}/"
             request_type="health"
+        elif ((roll < ERROR_RATE + ROOT_RATE + DB_READ_RATE)); then
+            method="GET"
+            url="${BASE_URL}/stored-users"
+            request_type="db-read"
         else
             method="GET"
             url="${BASE_URL}/users"

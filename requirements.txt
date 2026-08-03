@@ -2,3 +2,5 @@ fastapi
 uvicorn
 httpx
 newrelic
+sqlalchemy
+psycopg[binary]

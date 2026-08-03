@@ -9,6 +9,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 app = FastAPI(
     title="Server API",
     description="API intermediária que consulta o JSONPlaceholder.",
